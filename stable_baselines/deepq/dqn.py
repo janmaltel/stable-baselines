@@ -86,6 +86,12 @@ class DQN(OffPolicyRLModel):
         self.full_tensorboard_log = full_tensorboard_log
         self.double_q = double_q
 
+        print("-------------------------------------------------------------------------")
+        print("-------------------------------------------------------------------------")
+        print(f"THIS IS THE GAMMA: {gamma}")
+        print("-------------------------------------------------------------------------")
+        print("-------------------------------------------------------------------------")
+
         self.graph = None
         self.sess = None
         self._train_step = None
@@ -336,6 +342,40 @@ class DQN(OffPolicyRLModel):
         if not vectorized_env:
             actions = actions[0]
 
+        return actions, None
+
+    def sat_predict(self, observation, state=None, mask=None, deterministic=True, satisficing=False, xi=np.inf):
+        observation = np.array(observation)
+        vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
+
+        observation = observation.reshape((-1,) + self.observation_space.shape)
+        with self.sess.as_default():
+            actions, q_values, _, num_actions = self.step_model.sat_step(observation, deterministic=deterministic, satisficing=satisficing, xi=xi)
+
+        if not vectorized_env:
+            actions = actions[0]
+
+        return actions, None, q_values, num_actions
+
+    def get_q_values(self, obs):
+        return self.step_model.get_q_values(obs)
+
+    def random_predict(self, observation, state=None, mask=None, deterministic=True):
+        observation = np.array(observation)
+        vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
+
+        observation = observation.reshape((-1,) + self.observation_space.shape)
+        with self.sess.as_default():
+            actions, _, _ = self.step_model.step(observation, deterministic=deterministic)
+
+        if not vectorized_env:
+            actions = actions[0]
+
+        # print(f"before")
+        # print(actions)
+        actions = [np.random.choice(self.env.action_space.n)]
+        # print(f"after")
+        # print(actions)
         return actions, None
 
     def action_probability(self, observation, state=None, mask=None, actions=None, logp=False):

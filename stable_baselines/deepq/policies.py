@@ -148,8 +148,47 @@ class FeedForwardPolicy(DQNPolicy):
 
         return actions, q_values, None
 
+    def sat_step(self, obs, state=None, mask=None, deterministic=True, satisficing=False, xi=np.inf):
+        q_values, actions_proba = self.sess.run([self.q_values, self.policy_proba], {self.obs_ph: obs})
+        # print(q_values)
+        # print(q_values.shape)
+        # print(f"max {np.max(q_values)}")
+        q_values = q_values[0]
+        num_actions = len(q_values)
+        if satisficing:
+            # num_considered_actions = 0
+            satisfying_action_found = False
+            shuffled_action_indices = np.random.permutation(num_actions)
+            action_ix = 0
+            while not satisfying_action_found and action_ix < num_actions:
+                action = shuffled_action_indices[action_ix]
+                q_value_ix = q_values[action]
+                # q_values[action] = q_value_ix
+                if q_value_ix >= xi:
+                    satisfying_action_found = True
+                action_ix += 1
+            if not satisfying_action_found:
+                action = np.argmax(q_values)
+            num_actions = action_ix
+            actions = [action]
+        elif deterministic:
+            actions = [np.argmax(q_values)]
+        else:
+            # Unefficient sampling
+            # TODO: replace the loop
+            # maybe with Gumbel-max trick ? (http://amid.fish/humble-gumbel)
+            actions = np.zeros((len(obs),), dtype=np.int64)
+            for action_idx in range(len(obs)):
+                actions[action_idx] = np.random.choice(self.n_actions, p=actions_proba[action_idx])
+
+        return actions, q_values, None, num_actions
+
     def proba_step(self, obs, state=None, mask=None):
         return self.sess.run(self.policy_proba, {self.obs_ph: obs})
+
+    def get_q_values(self, obs):
+        q_values, _ = self.sess.run([self.q_values, self.policy_proba], {self.obs_ph: obs})
+        return q_values
 
 
 class CnnPolicy(FeedForwardPolicy):

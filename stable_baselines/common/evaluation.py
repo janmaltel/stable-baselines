@@ -29,8 +29,11 @@ def evaluate_policy(model, env, n_eval_episodes=10, deterministic=True,
         assert env.num_envs == 1, "You must pass only one environment when using this function"
 
     episode_rewards, episode_lengths = [], []
+    episode_starting_q_values = []
     for _ in range(n_eval_episodes):
         obs = env.reset()
+        mqv = np.max(model.get_q_values(obs))
+        episode_starting_q_values.append(mqv)
         done, state = False, None
         episode_reward = 0.0
         episode_length = 0
@@ -48,6 +51,8 @@ def evaluate_policy(model, env, n_eval_episodes=10, deterministic=True,
 
     mean_reward = np.mean(episode_rewards)
     std_reward = np.std(episode_rewards)
+
+    print(f"max starting q_value mean = {np.mean(episode_starting_q_values)}; max = {np.max(episode_starting_q_values)}; min = {np.min(episode_starting_q_values)}")
 
     if reward_threshold is not None:
         assert mean_reward > reward_threshold, 'Mean reward below threshold: '\
